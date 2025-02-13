@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 function App() {
@@ -101,8 +102,10 @@ function App() {
       border: '1px solid #ccc',
       borderRadius: '4px'
     },
-    solvedProblem: {
-      backgroundColor: '#c8e6c9'  // a more distinct green
+    // Style for the problem name div when solved: text becomes green
+    solvedName: {
+      color: 'green',
+      fontWeight: 'bold'
     },
     updateButton: {
       padding: '0.5rem 1rem',
@@ -153,19 +156,18 @@ function App() {
                     return (
                       <div
                         key={index}
-                        style={{
-                          ...styles.problemItem,
-                          ...(solved ? styles.solvedProblem : {})
-                        }}
+                        style={styles.problemItem}
                       >
-                        <a
-                          href={problem.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ textDecoration: 'none', color: solved ? 'green' : 'blue' }}
-                        >
-                          {problem.title} {solved && <span style={{ color: 'green', fontWeight: 'bold' }}>(Solved)</span>}
-                        </a>
+                        <div style={solved ? styles.solvedName : {}}>
+                          <a
+                            href={problem.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ textDecoration: 'none', color: solved ? 'green' : 'blue' }}
+                          >
+                            {problem.title} {solved && <span>(Solved)</span>}
+                          </a>
+                        </div>
                       </div>
                     );
                   })}
