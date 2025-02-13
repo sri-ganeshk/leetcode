@@ -1,15 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
+import './App.css';
 
 function App() {
   const [data, setData] = useState(null);
-  const [selectedPhase, setSelectedPhase] = useState('');
   const [solvedSlugs, setSolvedSlugs] = useState(new Set());
   const [collapsedSubCategories, setCollapsedSubCategories] = useState({});
 
-  // Function to fetch solved problems from LeetCode GraphQL API for user "ganeshknsml"
   const fetchSolved = async () => {
-    const url = 'https://leetcode.com/graphql';
+    // Use a CORS proxy URL - for development only!
+    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+    const targetUrl = 'https://leetcode.com/graphql';
+
     const query = `
       query recentAcSubmissionList($username: String!, $limit: Int!) {
         recentAcSubmissionList(username: $username, limit: $limit) {
@@ -23,7 +24,7 @@ function App() {
     };
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(proxyUrl + targetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, variables })
@@ -34,149 +35,104 @@ function App() {
         return;
       }
       const slugs = result.data.recentAcSubmissionList.map(submission => submission.titleSlug);
+      console.log("Fetched solved slugs:", slugs);
       setSolvedSlugs(new Set(slugs));
     } catch (error) {
       console.error('Error fetching solved problems:', error);
     }
   };
 
-  // Fetch problems.json from the public folder once on mount
+  // Fetch problems JSON and initialize collapsed state (minimized by default)
   useEffect(() => {
     fetch('/problems.json')
       .then(response => response.json())
-      .then(json => setData(json))
+      .then(json => {
+        setData(json);
+        // Initialize each subcategory as collapsed
+        let initialCollapsed = {};
+        Object.keys(json).forEach(phase => {
+          Object.keys(json[phase]).forEach(subCat => {
+            initialCollapsed[`${phase}-${subCat}`] = true;
+          });
+        });
+        setCollapsedSubCategories(initialCollapsed);
+      })
       .catch(err => console.error('Error fetching problems JSON:', err));
   }, []);
 
-  // Fetch solved problems when component mounts
   useEffect(() => {
     fetchSolved();
   }, []);
 
-  // Extract the problem slug from its URL
   const extractSlug = (url) => {
     const parts = url.split('/');
-    let slug = parts.pop() || parts.pop(); // Handle potential trailing slash
+    let slug = parts.pop() || parts.pop();
     return slug;
   };
 
-  // Handle Phase dropdown change
-  const handlePhaseChange = (e) => {
-    setSelectedPhase(e.target.value);
-    // Reset any collapsed state when a new phase is selected
-    setCollapsedSubCategories({});
-  };
-
-  // Toggle collapse/expand for a given subcategory
-  const toggleSubCategory = (subCat) => {
+  const toggleSubCategory = (phase, subCat) => {
+    const key = `${phase}-${subCat}`;
     setCollapsedSubCategories(prev => ({
       ...prev,
-      [subCat]: !prev[subCat]
+      [key]: !prev[key]
     }));
   };
 
-  // Some basic CSS styles
-  const styles = {
-    container: {
-      padding: '2rem',
-      fontFamily: 'Arial, sans-serif'
-    },
-    header: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between'
-    },
-    dropdownContainer: {
-      marginTop: '1rem'
-    },
-    subCatHeading: {
-      backgroundColor: '#f1f1f1',
-      padding: '0.5rem',
-      cursor: 'pointer',
-      borderRadius: '4px',
-      marginTop: '1rem'
-    },
-    problemItem: {
-      padding: '0.5rem',
-      marginBottom: '0.5rem',
-      border: '1px solid #ccc',
-      borderRadius: '4px'
-    },
-    // Style for the problem name div when solved: text becomes green
-    solvedName: {
-      color: 'green',
-      fontWeight: 'bold'
-    },
-    updateButton: {
-      padding: '0.5rem 1rem',
-      backgroundColor: '#007bff',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer'
-    }
-  };
-
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h1>Graph Problems</h1>
-        <button onClick={fetchSolved} style={styles.updateButton}>
+    <div className="app">
+      <div className="header">
+        <h1 className="title">Graph Problems</h1>
+        <button onClick={fetchSolved} className="button">
           Update LeetCode Submissions
         </button>
       </div>
 
-      <div style={styles.dropdownContainer}>
-        <label htmlFor="phaseDropdown">Select Phase: </label>
-        <select id="phaseDropdown" value={selectedPhase} onChange={handlePhaseChange}>
-          <option value="">-- Select a Phase --</option>
-          {data && Object.keys(data).map(phase => (
-            <option key={phase} value={phase}>{phase}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Once a phase is selected, display all subcategories as collapsible sections */}
-      {selectedPhase && data && (
-        <div style={{ marginTop: '2rem' }}>
-          {Object.keys(data[selectedPhase]).map(subCat => (
-            <div key={subCat}>
-              <div
-                onClick={() => toggleSubCategory(subCat)}
-                style={styles.subCatHeading}
-              >
-                <strong>{subCat}</strong> {collapsedSubCategories[subCat] ? '[+]' : '[-]'}
-              </div>
-              {/* Only show problems if the subcategory is not collapsed */}
-              {!collapsedSubCategories[subCat] && (
-                <div style={{ marginTop: '0.5rem', paddingLeft: '1rem' }}>
-                  {data[selectedPhase][subCat].map((problem, index) => {
-                    const slug = extractSlug(problem.url);
-                    const solved = solvedSlugs.has(slug);
-                    return (
-                      <div
-                        key={index}
-                        style={styles.problemItem}
-                      >
-                        <div style={solved ? styles.solvedName : {}}>
-                          <a
-                            href={problem.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ textDecoration: 'none', color: solved ? 'green' : 'blue' }}
-                          >
-                            {problem.title} {solved && <span>(Solved)</span>}
-                          </a>
-                        </div>
+      <div className="section">
+        {data ? (
+          Object.keys(data).map(phase => (
+            <div key={phase} className="phase">
+              <h2 className="phase-title">{phase}</h2>
+              {Object.keys(data[phase]).map(subCat => {
+                const key = `${phase}-${subCat}`;
+                const isCollapsed = collapsedSubCategories[key];
+                return (
+                  <div key={subCat} className="subcategory">
+                    <div
+                      onClick={() => toggleSubCategory(phase, subCat)}
+                      className="subcategory-header"
+                    >
+                      <span className="subcategory-title">{subCat}</span>
+                      <span>{isCollapsed ? '[+]' : '[-]'}</span>
+                    </div>
+                    {!isCollapsed && (
+                      <div className="subcategory-content">
+                        {data[phase][subCat].map((problem, index) => {
+                          const slug = extractSlug(problem.url);
+                          const solved = solvedSlugs.has(slug);
+                          return (
+                            <div key={index} className="problem">
+                              <a
+                                href={problem.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={solved ? 'problem-solved' : 'problem-unsolved'}
+                              >
+                                {problem.title} {solved && <span>(Solved)</span>}
+                              </a>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        ) : (
+          <p>Loading problems...</p>
+        )}
+      </div>
     </div>
   );
 }
