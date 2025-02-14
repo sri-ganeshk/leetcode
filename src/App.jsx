@@ -7,10 +7,7 @@ function App() {
   const [collapsedSubCategories, setCollapsedSubCategories] = useState({});
 
   const fetchSolved = async () => {
-    // Use a CORS proxy URL - for development only!
-    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-    const targetUrl = 'https://leetcode.com/graphql';
-
+    const targetUrl = '/api/leetcode'; // Use your Vercel endpoint
     const query = `
       query recentAcSubmissionList($username: String!, $limit: Int!) {
         recentAcSubmissionList(username: $username, limit: $limit) {
@@ -22,9 +19,9 @@ function App() {
       username: "ganeshknsml",
       limit: 1000
     };
-
+  
     try {
-      const response = await fetch(proxyUrl + targetUrl, {
+      const response = await fetch(targetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, variables })
@@ -41,6 +38,7 @@ function App() {
       console.error('Error fetching solved problems:', error);
     }
   };
+  
 
   // Fetch problems JSON and initialize collapsed state (minimized by default)
   useEffect(() => {
